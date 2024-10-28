@@ -1,0 +1,66 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+#  push:
+#    branches:
+#      - release  # or main if preferred
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Xcode
+        run: sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+
+      - name: Install dependencies
+        run: brew install git cmake # Adjust as needed for any other dependencies
+
+      - name: Build Project
+        env:
+          PROJECT_ROOT: ${{ github.workspace }}
+          OPEN_SSL_ROOT: ${{ github.workspace }}/openssl
+          SE_VPN_ROOT: ${{ github.workspace }}/SoftEtherVPN
+          IOS_CMAKE_ROOT: ${{ github.workspace }}/ios-cmake
+          NCURSES_ROOT: ${{ github.workspace }}/ncurses
+          CC: clang -isysroot $(xcrun --sdk iphoneos --show-sdk-path)
+          CROSS_TOP: $(xcrun --sdk iphoneos --show-sdk-platform-path)/Developer
+          CROSS_SDK: $(xcrun --sdk iphoneos --show-sdk-path | xargs basename)
+          PATH: "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
+          CFLAGS: -DTARGET_OS_IPHONE
+        run: |
+          # Run the build script (assuming it's executable in the repository)
+          ./build_script.sh
+
+      - name: Package Artifact
+        run: |
+          mkdir -p release
+          cp -r build/* release/
+          tar -czvf release/project-release.tar.gz release
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: project-release
+          path: release/project-release.tar.gz
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: project-release
+          path: ./release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./release/project-release.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
