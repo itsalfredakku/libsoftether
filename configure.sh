@@ -46,9 +46,9 @@ if [ -d "$NCURSES_ROOT" ]; then
       echo "Patch already applied. Skipping."
     else
       # Apply the patch
-      echo 'Applying patch to Ncurses...'
-      echo 'Type the following value on prompt: ncurses/tinfo/lib_baudrate.c'
-      patch -p1 < "$PROJECT_ROOT/patch/lib_baudrate.c.diff" || { echo 'Failed to apply patch to Ncurses'; exit 1; }
+      # echo 'Applying patch to Ncurses...'
+      # echo 'Type the following value on prompt: ncurses/tinfo/lib_baudrate.c'
+      # patch -p1 < "$PROJECT_ROOT/patch/lib_baudrate.c.diff" || { echo 'Failed to apply patch to Ncurses'; exit 1; }
       # send this value on prompt 'ncurses/tinfo/lib_baudrate.c'
       # no interractive prompt during patching
 
