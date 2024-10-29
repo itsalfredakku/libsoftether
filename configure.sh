@@ -9,8 +9,7 @@ if ! [ -x "$(command -v git)" ]; then
   exit 1
 fi
 
-# Install dependencies
-git submodule update --init --recursive
+# git submodule update --init --recursive
 
 # Build the project
 mkdir -p build
