@@ -33,40 +33,50 @@ export IPHONEOS_DEPLOYMENT_TARGET="13.0"
 # Build OpenSSL
 if [ -d "$OPEN_SSL_ROOT" ]; then
     cd "$OPEN_SSL_ROOT"
+    echo '===================================='
     echo 'Configuring OpenSSL...'
-    ./Configure ios64-cross no-shared
-    make
+    echo '===================================='
+    ./Configure ios64-cross no-shared || { echo 'OpenSSL configuration failed'; exit 1; }
+    make || { echo 'Failed to build OpenSSL'; exit 1; }
+    echo 'Finished building OpenSSL'
+    echo '===================================='
     cd "$PROJECT_ROOT"
 fi
 
 # Build ncurses
 if [ -d "$NCURSES_ROOT" ]; then
+    # cd "$NCURSES_ROOT"
+    # if grep -Fq 'defined(__APPLE__) && !defined(TARGET_OS_IPHONE) && !TARGET_OS_IPHONE' "$NCURSES_ROOT/ncurses/tinfo/lib_baudrate.c"; then
+    #   echo "Patch already applied. Skipping."
+    # # else
+    #   # Apply the patch
+    #   # echo 'Applying patch to Ncurses...'
+    #   # echo 'Type the following value on prompt: ncurses/ncurses/tinfo/lib_baudrate.c'
+    #   # patch -p1 < "$PROJECT_ROOT/patch/lib_baudrate.c.diff" || { echo 'Failed to apply patch to Ncurses'; exit 1; }
+    #   # send this value on prompt 'ncurses/tinfo/lib_baudrate.c'
+    #   # no interractive prompt during patching
+    # fi
     cd "$NCURSES_ROOT"
-    if grep -Fq 'defined(__APPLE__) && !defined(TARGET_OS_IPHONE) && !TARGET_OS_IPHONE' "$NCURSES_ROOT/ncurses/tinfo/lib_baudrate.c"; then
-      echo "Patch already applied. Skipping."
-    else
-      # Apply the patch
-      # echo 'Applying patch to Ncurses...'
-      # echo 'Type the following value on prompt: ncurses/tinfo/lib_baudrate.c'
-      # patch -p1 < "$PROJECT_ROOT/patch/lib_baudrate.c.diff" || { echo 'Failed to apply patch to Ncurses'; exit 1; }
-      # send this value on prompt 'ncurses/tinfo/lib_baudrate.c'
-      # no interractive prompt during patching
-
-
-
-    fi
+    echo '===================================='
     echo 'Configuring Ncurses...'
+    echo '===================================='
     ./configure --host=arm-apple-darwin --without-shared --without-progs --without-tests --enable-widec --with-build-cc || { echo 'Ncurses configuration failed'; exit 1; }
     make || { echo 'Failed to build Ncurses'; exit 1; }
+    echo 'Finished building Ncurses'
+    echo '===================================='
     cd "$PROJECT_ROOT"
 fi
 
 # Build SoftEtherVPN
 if [ -d "$SE_VPN_ROOT" ]; then
     cd "$SE_VPN_ROOT"
+    echo '===================================='
     echo 'Configuring SoftEtherVPN...'
+    echo '===================================='
     ./configure
     make -C build
     # make -C build install # Not needed
+    echo 'Finished building SoftEtherVPN'
+    echo '===================================='
     cd "$PROJECT_ROOT"
 fi
