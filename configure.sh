@@ -41,6 +41,19 @@ fi
 # Build ncurses
 if [ -d "$NCURSES_ROOT" ]; then
     cd "$NCURSES_ROOT"
+    if grep -Fq 'defined(__APPLE__) && !defined(TARGET_OS_IPHONE) && !TARGET_OS_IPHONE' "$NCURSES_ROOT/ncurses/tinfo/lib_baudrate.c"; then
+      echo "Patch already applied. Skipping."
+    else
+      # Apply the patch
+      echo 'Applying patch to Ncurses...'
+      echo 'Type the following value on prompt: ncurses/tinfo/lib_baudrate.c'
+      patch -p1 < "$PROJECT_ROOT/patch/lib_baudrate.c.diff"
+      # send this value on prompt 'ncurses/tinfo/lib_baudrate.c'
+      # no interractive prompt during patching
+
+
+
+    fi
     echo 'Configuring Ncurses...'
     ./configure --host=arm-apple-darwin --without-shared --without-progs --without-tests --enable-widec || { echo 'Ncurses configuration failed'; exit 1; }
     make || { echo 'Failed to build Ncurses'; exit 1; }
