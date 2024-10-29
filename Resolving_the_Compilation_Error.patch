@@ -1,0 +1,22 @@
+Subject: [PATCH] Resolving the Compilation Error
+---
+Index: src/Mayaqua/Unix.c
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/Mayaqua/Unix.c b/src/Mayaqua/Unix.c
+--- a/src/Mayaqua/Unix.c	(revision e475d70c0b0e62683cf03e764d0937f54aa62266)
++++ b/src/Mayaqua/Unix.c	(date 1730216836363)
+@@ -2568,7 +2568,11 @@
+ 			Format(tmp, sizeof(tmp), "killall -KILL %s", name);
+ 
+ 			UniPrint(_UU("UNIX_SVC_STOP_FAILED"), svc_title);
++//			system(tmp);
++#if !defined(TARGET_OS_IPHONE) && !defined(__APPLE_IOS__)
++			// Code that uses system()
+ 			system(tmp);
++#endif
+ 		}
+ 	}
+ 

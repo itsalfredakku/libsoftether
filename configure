@@ -1,0 +1,143 @@
+#!/bin/sh
+
+# Exit on error
+set -e
+
+# Check if git is installed
+if ! [ -x "$(command -v git)" ]; then
+  echo 'Error: git is not installed.' >&2
+  exit 1
+fi
+
+# Check if patch is installed
+git submodule update --remote --init --recursive
+
+# Build the project
+mkdir -p build
+
+# Set environment variables
+export PROJECT_ROOT="$(pwd)"
+export OPENSSL_ROOT_DIR="$PROJECT_ROOT/openssl"
+export SE_VPN_ROOT="$PROJECT_ROOT/SoftEtherVPN"
+export IOS_CMAKE_ROOT="$PROJECT_ROOT/ios-cmake"
+export NCURSES_ROOT="$PROJECT_ROOT/ncurses"
+
+# Build ncurses
+if [ -d "$NCURSES_ROOT" ]; then
+    cd "$NCURSES_ROOT"
+    echo '===================================='
+    echo 'Configuring Ncurses...'
+    echo '===================================='
+    make clean
+    ./configure --host=arm-apple-darwin --without-shared --without-progs --without-tests || { echo 'Ncurses configuration failed'; exit 1; }
+    make || { echo 'Failed to build Ncurses'; exit 1; }
+    echo 'Finished building Ncurses'
+    echo '===================================='
+    cd "$PROJECT_ROOT"
+fi
+# Build OpenSSL
+if [ -d "$OPENSSL_ROOT_DIR" ]; then
+    cd "$OPENSSL_ROOT_DIR"
+    echo '===================================='
+    echo 'Configuring OpenSSL...'
+    echo '===================================='
+    # Clean previous builds
+    make clean
+    # Switch to OpenSSL 1.1.1-stable branch
+    git fetch --all
+    git checkout OpenSSL_1_1_1-stable
+    # Clean untracked files and reset any modifications
+    git clean -xfd
+    git reset --hard HEAD
+
+    # Set environment variables for iOS cross-compilation
+    export IPHONEOS_DEPLOYMENT_TARGET="13.0"
+    export CROSS_TOP="$(xcrun --sdk iphoneos --show-sdk-platform-path)/Developer"
+    export CROSS_SDK="$(xcrun --sdk iphoneos --show-sdk-path | xargs basename)"
+    export CFLAGS="-DTARGET_OS_IPHONE"
+    export PATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
+
+    # Configure OpenSSL
+    ./Configure ios64-cross no-shared no-async || { echo 'OpenSSL configuration failed'; exit 1; }
+    # Build OpenSSL
+    make || { echo 'Failed to build OpenSSL'; exit 1; }
+    echo 'Finished building OpenSSL'
+    echo '===================================='
+    # Verify OpenSSL version and architectures
+    "$OPENSSL_ROOT_DIR/bin/openssl" version
+    lipo -info "$OPENSSL_ROOT_DIR/lib/libssl.a"
+    lipo -info "$OPENSSL_ROOT_DIR/lib/libcrypto.a"
+    echo '===================================='
+    cd "$PROJECT_ROOT"
+fi
+
+# Build SoftEtherVPN
+if [ -d "$SE_VPN_ROOT" ]; then
+    echo 'Configuring SoftEtherVPN...'
+
+    # Set a build directory outside of the source tree
+    export BUILD_DIR="$PROJECT_ROOT/build"
+    export IOS_BUILD_DIR="$BUILD_DIR/ios"
+
+    # Remove any existing build directory
+    rm -rf "$IOS_BUILD_DIR"
+    mkdir -p "$IOS_BUILD_DIR"
+    cd "$IOS_BUILD_DIR" || exit
+
+    # Run CMake with specified toolchain and options
+    cmake "$SE_VPN_ROOT" -G "Xcode" \
+        -DCMAKE_SYSTEM_NAME="iOS" \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET="$IPHONEOS_DEPLOYMENT_TARGET" \
+        -DCMAKE_TOOLCHAIN_FILE="$IOS_TOOLCHAIN_FILE" \
+        -DPLATFORM="OS64" \
+        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+        -DENABLE_BITCODE=0 \
+        -DCMAKE_INSTALL_PREFIX="$IOS_BUILD_DIR" \
+        -DOPENSSL_USE_STATIC_LIBS=TRUE \
+        -DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR" \
+        -DOPENSSL_INCLUDE_DIR="$OPENSSL_ROOT_DIR/include" \
+        -DOPENSSL_SSL_LIBRARY="$OPENSSL_ROOT_DIR/lib/libssl.a" \
+        -DOPENSSL_CRYPTO_LIBRARY="$OPENSSL_ROOT_DIR/lib/libcrypto.a" \
+        -DCURSES_INCLUDE_PATH="$NCURSES_ROOT/include" \
+        -DCURSES_LIBRARY="$NCURSES_ROOT/lib/libncurses.a" \
+        -DOQS_PERMIT_UNSUPPORTED_ARCHITECTURE=ON \
+        -DCMAKE_OSX_SYSROOT="iphoneos" || {
+            echo 'CMake configuration failed for SoftEtherVPN'
+            exit 1
+        }
+
+    # Build and install
+    cmake --build . --config Release --target install || {
+        echo 'Failed to build SoftEtherVPN'
+        exit 1
+    }
+
+    echo 'Finished building SoftEtherVPN'
+    cd "$PROJECT_ROOT"
+fi
+
+echo '===================================='
+echo 'Build Process Completed Successfully'
+echo '===================================='
+
+# # Build SoftEtherVPN
+# if [ -d "$SE_VPN_ROOT" ]; then
+#     cd "$SE_VPN_ROOT"
+#     echo '===================================='
+#     echo 'Configuring SoftEtherVPN...'
+#     echo '===================================='
+#     export CC="clang -isysroot $(xcrun --sdk iphoneos --show-sdk-path)"
+#     export CROSS_TOP="$(xcrun --sdk iphoneos --show-sdk-platform-path)/Developer"
+#     export CROSS_SDK="$(xcrun --sdk iphoneos --show-sdk-path | xargs basename)"
+#     export CFLAGS="-DTARGET_OS_IPHONE"
+#     export IPHONEOS_DEPLOYMENT_TARGET="13.0"
+#     export PATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
+#     export OPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR"
+#     ./configure
+#     # cmake -DOPENSSL_ROOT_DIR=$OPENSSL_ROOT_DIR -DOPENSSL_LIBRARIES=$OPENSSL_LIBRARIES .
+#     make -C build
+#     # make -C build install # Not needed
+#     echo 'Finished building SoftEtherVPN'
+#     echo '===================================='
+#     cd "$PROJECT_ROOT"
+# fi
