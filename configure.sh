@@ -28,6 +28,7 @@ export CROSS_TOP="$(xcrun --sdk iphoneos --show-sdk-platform-path)/Developer"
 export CROSS_SDK="$(xcrun --sdk iphoneos --show-sdk-path | xargs basename)"
 export PATH="/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin:$PATH"
 export CFLAGS="-DTARGET_OS_IPHONE"
+export IPHONEOS_DEPLOYMENT_TARGET="13.0"
 
 # Build OpenSSL
 if [ -d "$OPEN_SSL_ROOT" ]; then
@@ -47,7 +48,7 @@ if [ -d "$NCURSES_ROOT" ]; then
       # Apply the patch
       echo 'Applying patch to Ncurses...'
       echo 'Type the following value on prompt: ncurses/tinfo/lib_baudrate.c'
-      patch -p1 < "$PROJECT_ROOT/patch/lib_baudrate.c.diff"
+      patch -p1 < "$PROJECT_ROOT/patch/lib_baudrate.c.diff" || { echo 'Failed to apply patch to Ncurses'; exit 1; }
       # send this value on prompt 'ncurses/tinfo/lib_baudrate.c'
       # no interractive prompt during patching
 
@@ -55,7 +56,7 @@ if [ -d "$NCURSES_ROOT" ]; then
 
     fi
     echo 'Configuring Ncurses...'
-    ./configure --host=arm-apple-darwin --without-shared --without-progs --without-tests --enable-widec || { echo 'Ncurses configuration failed'; exit 1; }
+    ./configure --host=arm-apple-darwin --without-shared --without-progs --without-tests --enable-widec --with-build-cc || { echo 'Ncurses configuration failed'; exit 1; }
     make || { echo 'Failed to build Ncurses'; exit 1; }
     cd "$PROJECT_ROOT"
 fi
