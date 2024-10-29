@@ -9,7 +9,8 @@ if ! [ -x "$(command -v git)" ]; then
   exit 1
 fi
 
-# git submodule update --init --recursive
+# Check if patch is installed
+git submodule update --init --recursive
 
 # Build the project
 mkdir -p build
